@@ -14,6 +14,7 @@ import com.danny.chatroom.repository.ChatRoomRepository;
 import com.danny.chatroom.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -223,7 +224,7 @@ public class ChatService {
         List<Long> userIds = request.getUserIds();
         for (Long newUserId : userIds) {
             User user = userRepository.findById(newUserId)
-                    .orElseThrow(() -> (new EntityNotFoundException("User not found")));
+                    .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
             LocalDateTime now = LocalDateTime.now();
 
@@ -265,7 +266,7 @@ public class ChatService {
     private void checkRoomMember(Long roomId, Long userId) {
         boolean isMember = chatRoomMemberRepository.existsByChatRoomIdAndUserId(roomId, userId);
 
-        if (!isMember) throw new EntityNotFoundException("Not chat room member, operation failed");
+        if (!isMember) throw new AccessDeniedException("Not chat room member, operation failed");
     }
 
     private void resolveChatRoomName(Long userId, ChatRoom room) {

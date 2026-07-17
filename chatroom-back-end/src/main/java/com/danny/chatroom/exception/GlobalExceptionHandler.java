@@ -1,19 +1,76 @@
 package com.danny.chatroom.exception;
 
 import com.danny.chatroom.dto.response.CustomErrorResponse;
-import com.danny.chatroom.exception.custom.InternalServerException;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.time.LocalDateTime;
 
 @Slf4j
+@ControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(InternalServerException.class)
-    public ResponseEntity<CustomErrorResponse> handleInternalServerException(InternalServerException ex) {
-        log.error("Interval server error: ", ex);
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<CustomErrorResponse> handleEntityNotFound(EntityNotFoundException ex) {
+        log.error("RESOURCE NOT FOUND", ex);
+
+        CustomErrorResponse customErrorResponse = CustomErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .code("RESOURCE_NOT_FOUND")
+                .message(ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.badRequest().body(customErrorResponse);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<CustomErrorResponse> handleBadCredentials(BadCredentialsException ex) {
+        log.error("BAD CREDENTIAL", ex);
+
+        CustomErrorResponse error = CustomErrorResponse.builder()
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .code("BAD_CREDENTIAL")
+                .message(ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<CustomErrorResponse> handleUserNotFound(UsernameNotFoundException ex) {
+        log.error("USER NOT FOUND", ex);
+
+        CustomErrorResponse error = CustomErrorResponse.builder()
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .code("USER_NOT_FOUND")
+                .message(ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<CustomErrorResponse> handleAuthorization(AccessDeniedException ex) {
+        log.error("FORBIDDEN", ex);
+
+        CustomErrorResponse error = CustomErrorResponse.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .code("FORBIDDEN")
+                .message(ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<CustomErrorResponse> handleRuntimeError(RuntimeException ex) {
+        log.error("SYSTEM ERROR", ex);
 
         CustomErrorResponse error = CustomErrorResponse.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())

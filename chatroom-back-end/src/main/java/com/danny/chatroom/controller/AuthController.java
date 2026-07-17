@@ -8,15 +8,13 @@ import com.danny.chatroom.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import static com.danny.chatroom.dto.response.UserInfo.fromUserDetails;
-import static com.danny.chatroom.util.CookieUtil.addToken;
-import static com.danny.chatroom.util.CookieUtil.removeToken;
+import static com.danny.chatroom.util.CookieUtil.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -30,7 +28,7 @@ public class AuthController {
         LoginResponse response = authService.login(loginRequest);
 
         UserDetailsImpl userDetails = response.getUserDetailsImpl();
-        ResponseCookie cookie = addToken(response.getToken());
+        ResponseCookie cookie = createJwtCookie(response.getToken());
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
@@ -39,7 +37,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout() {
-        ResponseCookie cookie = removeToken();
+        ResponseCookie cookie = removeJwtCookie();
 
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
@@ -48,7 +46,7 @@ public class AuthController {
 
     @GetMapping("/fetchMe")
     public ResponseEntity<UserInfo> fetchMe(@AuthenticationPrincipal UserDetailsImpl userDetails) {
-        if (userDetails == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (userDetails == null) return ResponseEntity.ok(new UserInfo());
         return ResponseEntity.ok(fromUserDetails(userDetails));
     }
 }
