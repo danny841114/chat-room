@@ -25,7 +25,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
-@Transactional
 @Service
 public class ChatService {
     private final ChatRoomMemberRepository chatRoomMemberRepository;
@@ -37,69 +36,36 @@ public class ChatService {
     public List<ChatRoomResponse> getMyRooms(Long userId) {
         return chatRoomMemberRepository.findByUserIdOrderByChatRoomLastMessageTimeDesc(userId)
                 .stream()
-                .map(chatRoomMember -> {
-                    ChatRoom room = chatRoomMember.getChatRoom();
-
-                    Long count = chatRoomMemberRepository.countUnreadMessages(userId, room.getId());
-
-                    if ("PRIVATE".equals(room.getType())) {
-                        ChatRoomMember c = room.getMembers().stream()
-                                .filter(m -> !Objects.equals(m.getUser().getId(), userId))
-                                .toList()
-                                .get(0);
-                        room.setName(c.getUser().getUsername());
-                    }
-
-                    return new ChatRoomResponse(
-                            room.getId(),
-                            room.getName(),
-                            room.getType(),
-                            count,
-                            null
-                    );
-                })
+                .map(chatRoomMember -> getChatRoomResponse(chatRoomMember, userId))
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public ChatRoomResponse getRoom(Long roomId, Long userId) {
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("Chat room not found"));
+
         checkRoomMember(roomId, userId);
 
         Long count = chatRoomMemberRepository.countUnreadMessages(userId, roomId);
 
-        Optional<ChatRoom> chatRoomOptional = chatRoomRepository.findById(roomId);
-        if (chatRoomOptional.isPresent()) {
-            ChatRoom chatRoom = chatRoomOptional.get();
+        List<ChatRoomResponse.User> users = chatRoom.getMembers()
+                .stream()
+                .map(this::fromEntity)
+                .toList();
 
-            List<ChatRoomResponse.User> users = chatRoom.getMembers()
-                    .stream()
-                    .map(m ->
-                            new ChatRoomResponse.User(
-                                    m.getUser().getId(),
-                                    m.getUser().getUsername(),
-                                    m.getUser().getAccount()
-                            )
-                    )
-                    .toList();
+        resolveChatRoomName(userId, chatRoom);
 
-            if ("PRIVATE".equals(chatRoom.getType())) {
-                ChatRoomMember chatRoomMember = chatRoom.getMembers().stream()
-                        .filter(m -> !Objects.equals(m.getUser().getId(), userId))
-                        .toList()
-                        .get(0);
-                chatRoom.setName(chatRoomMember.getUser().getUsername());
-            }
-
-            return new ChatRoomResponse(
-                    chatRoom.getId(),
-                    chatRoom.getName(),
-                    chatRoom.getType(),
-                    count,
-                    users
-            );
-        }
-        return null;
+        return ChatRoomResponse.builder()
+                .roomId(chatRoom.getId())
+                .name(chatRoom.getName())
+                .type(chatRoom.getType())
+                .unreadMessagesCount(count)
+                .users(users)
+                .build();
     }
 
+    @Transactional
     public List<ChatMessageResponse> getMessages(Long roomId, Long userId) {
         checkRoomMember(roomId, userId);
 
@@ -110,31 +76,32 @@ public class ChatService {
 
         return chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(roomId)
                 .stream()
-                .map(this::toMessageResponse)
+                .map(this::fromEntity)
                 .toList();
     }
 
+    @Transactional
     public void deleteMessage(Long roomId, Long messageId, Long userId) {
         checkRoomMember(roomId, userId);
 
-        Optional<ChatMessage> messageOptional = chatMessageRepository.findById(messageId);
-        if (messageOptional.isEmpty()) throw new EntityNotFoundException("不存在此訊息");
+        ChatMessage chatMessage = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new EntityNotFoundException("Message not found"));
 
-        ChatMessage chatMessage = messageOptional.get();
         chatMessage.setDeletedAt(LocalDateTime.now());
         chatMessageRepository.save(chatMessage);
     }
 
+    @Transactional
     public ChatMessageResponse sendMessage(Long roomId, SendMessageRequest request) {
         Long senderId = request.getSenderId();
 
         checkRoomMember(roomId, senderId);
 
         ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("聊天室不存在"));
+                .orElseThrow(() -> new EntityNotFoundException("Chat room not found"));
 
         User sender = userRepository.findById(senderId)
-                .orElseThrow(() -> new EntityNotFoundException("使用者不存在"));
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -149,13 +116,15 @@ public class ChatService {
         message.setCreatedAt(now);
         ChatMessage savedMessage = chatMessageRepository.save(message);
 
-        return toMessageResponse(savedMessage);
+        return fromEntity(savedMessage);
     }
 
+    @Transactional(readOnly = true)
     public List<ChatRoomMember> findByChatRoomId(Long roomId) {
         return chatRoomMemberRepository.findByChatRoomId(roomId);
     }
 
+    @Transactional
     public ChatRoomResponse createChatRoom(AddChatRoomRequest addChatRoomRequest, Long userId) {
         Set<Long> memberIds = addChatRoomRequest.getMemberIds();
         String type = addChatRoomRequest.getType();
@@ -172,13 +141,13 @@ public class ChatService {
                         .anyMatch(m -> m.getUser().getId().equals(targetUserId));
 
                 if (existed) {
-                    return new ChatRoomResponse(
-                            room.getId(),
-                            room.getName(),
-                            room.getType(),
-                            0L,
-                            null
-                    );
+                    return ChatRoomResponse.builder()
+                            .roomId(room.getId())
+                            .name(room.getName())
+                            .type(room.getType())
+                            .unreadMessagesCount(0L)
+                            .users(null)
+                            .build();
                 }
             }
         }
@@ -190,48 +159,46 @@ public class ChatService {
         newChatRoom.setType(type);
         newChatRoom.setCreatedAt(now);
         newChatRoom.setLastMessageTime(now);
-        chatRoomRepository.save(newChatRoom);
+        ChatRoom savedChatRoom = chatRoomRepository.save(newChatRoom);
 
         List<ChatRoomMember> chatRoomMembers = new ArrayList<>();
 
         memberIds.add(userId);
         for (Long memberId : memberIds) {
             User user = userRepository.findById(memberId)
-                    .orElseThrow(() -> new EntityNotFoundException("使用者不存在"));
+                    .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
             ChatRoomMember chatRoomMember = new ChatRoomMember();
             chatRoomMember.setUser(user);
-            chatRoomMember.setChatRoom(newChatRoom);
-            chatRoomMember.setJoinedAt(now);
-            chatRoomMember.setLastReadAt(now);
+            chatRoomMember.setChatRoom(savedChatRoom);
+            chatRoomMember.setJoinedAt(savedChatRoom.getCreatedAt());
+            chatRoomMember.setLastReadAt(savedChatRoom.getCreatedAt());
 
             chatRoomMembers.add(chatRoomMember);
         }
         chatRoomMemberRepository.saveAll(chatRoomMembers);
 
-        return new ChatRoomResponse(
-                newChatRoom.getId(),
-                newChatRoom.getName(),
-                newChatRoom.getType(),
-                0L,
-                null
-        );
+        return ChatRoomResponse.builder()
+                .roomId(savedChatRoom.getId())
+                .name(savedChatRoom.getName())
+                .type(savedChatRoom.getType())
+                .unreadMessagesCount(0L)
+                .users(null)
+                .build();
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getUsersExceptMe(Long userId) {
         List<User> allUsers = userRepository.findAll();
 
-        return allUsers
-                .stream()
+        return allUsers.stream()
                 .filter(user -> !Objects.equals(user.getId(), userId))
-                .map(user -> new UserResponse(
-                        user.getId(),
-                        user.getAccount(),
-                        user.getUsername()))
+                .map(user -> new UserResponse(user.getId(), user.getAccount(), user.getUsername()))
                 .toList();
     }
 
     // TODO 之後把過濾邏輯寫至Repository層
+    @Transactional(readOnly = true)
     public List<UserResponse> getUsersExceptExistingMembers(Long roomId, Long userId) {
         checkRoomMember(roomId, userId);
 
@@ -242,13 +209,9 @@ public class ChatService {
 
         List<User> allUsers = userRepository.findAll();
 
-        return allUsers
-                .stream()
+        return allUsers.stream()
                 .filter(user -> !existingUserIds.contains(user.getId()))
-                .map(user -> new UserResponse(
-                        user.getId(),
-                        user.getAccount(),
-                        user.getUsername()))
+                .map(this::fromEntity)
                 .toList();
     }
 
@@ -260,17 +223,18 @@ public class ChatService {
         chatRoomMemberRepository.deleteByChatRoomIdAndUserId(roomId, deleteUserId);
     }
 
+    @Transactional
     public List<ChatRoomMemberResponse> addChatRoomUsers(Long roomId, AddMemberRequest request, Long userId) {
         checkRoomMember(roomId, userId);
 
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> (new EntityNotFoundException("無此聊天室")));
+                .orElseThrow(() -> (new EntityNotFoundException("Chat room not found")));
 
         List<ChatRoomMemberResponse> responses = new ArrayList<>();
         List<Long> userIds = request.getUserIds();
-        for (Long addUserId : userIds) {
-            User user = userRepository.findById(addUserId)
-                    .orElseThrow(() -> (new EntityNotFoundException("無此使用者")));
+        for (Long newUserId : userIds) {
+            User user = userRepository.findById(newUserId)
+                    .orElseThrow(() -> (new EntityNotFoundException("User not found")));
 
             LocalDateTime now = LocalDateTime.now();
 
@@ -281,30 +245,77 @@ public class ChatService {
             chatRoomMember.setLastReadAt(now);
             chatRoomMemberRepository.save(chatRoomMember);
 
-            ChatRoomMemberResponse response = new ChatRoomMemberResponse(roomId, addUserId, now, now);
+            ChatRoomMemberResponse response = ChatRoomMemberResponse.builder()
+                    .chatRoomId(roomId)
+                    .userId(newUserId)
+                    .joinedAt(now)
+                    .lastReadAt(now)
+                    .build();
             responses.add(response);
         }
 
         return responses;
     }
 
+    private ChatRoomResponse getChatRoomResponse(ChatRoomMember chatRoomMember, Long userId) {
+        ChatRoom room = chatRoomMember.getChatRoom();
+
+        Long count = chatRoomMemberRepository.countUnreadMessages(userId, room.getId());
+
+        resolveChatRoomName(userId, room);
+
+        return ChatRoomResponse.builder()
+                .roomId(room.getId())
+                .name(room.getName())
+                .type(room.getType())
+                .unreadMessagesCount(count)
+                .users(null)
+                .build();
+    }
+
     private void checkRoomMember(Long roomId, Long userId) {
         boolean isMember = chatRoomMemberRepository.existsByChatRoomIdAndUserId(roomId, userId);
 
-        if (!isMember) throw new EntityNotFoundException("不是聊天室成員，無法操作");
+        if (!isMember) throw new EntityNotFoundException("Not chat room member, operation failed");
     }
 
-    private ChatMessageResponse toMessageResponse(ChatMessage message) {
-        return new ChatMessageResponse(
-                message.getId(),
-                message.getChatRoom().getId(),
-                message.getSender().getId(),
-                message.getSender().getUsername(),
-                message.getSender().getAccount(),
-                message.getContent(),
-                message.getMessageType(),
-                message.getCreatedAt(),
-                message.getDeletedAt()
-        );
+    private void resolveChatRoomName(Long userId, ChatRoom room) {
+        if ("PRIVATE".equals(room.getType())) {
+            room.getMembers().stream()
+                    .map(ChatRoomMember::getUser)
+                    .filter(u -> !Objects.equals(u.getId(), userId))
+                    .findFirst()
+                    .ifPresent(otherUser -> room.setName(otherUser.getUsername()));
+        }
+    }
+
+    private ChatMessageResponse fromEntity(ChatMessage message) {
+        return ChatMessageResponse.builder()
+                .messageId(message.getId())
+                .roomId(message.getChatRoom().getId())
+                .senderId(message.getSender().getId())
+                .senderName(message.getSender().getUsername())
+                .senderAccount(message.getSender().getAccount())
+                .content(message.getContent())
+                .messageType(message.getMessageType())
+                .createdAt(message.getCreatedAt())
+                .deletedAt(message.getDeletedAt())
+                .build();
+    }
+
+    private ChatRoomResponse.User fromEntity(ChatRoomMember member) {
+        return ChatRoomResponse.User.builder()
+                .id(member.getUser().getId())
+                .username(member.getUser().getUsername())
+                .account(member.getUser().getAccount())
+                .build();
+    }
+
+    private UserResponse fromEntity(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .account(user.getAccount())
+                .username(user.getUsername())
+                .build();
     }
 }

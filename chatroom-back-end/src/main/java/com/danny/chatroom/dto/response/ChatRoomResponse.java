@@ -1,14 +1,14 @@
 package com.danny.chatroom.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ChatRoomResponse {
@@ -20,6 +20,8 @@ public class ChatRoomResponse {
 
     @Getter
     @Setter
+    @Builder
+    @NoArgsConstructor
     @AllArgsConstructor
     public static class User{
         private Long id;

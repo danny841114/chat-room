@@ -1,13 +1,13 @@
 package com.danny.chatroom.dto.response;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
 @AllArgsConstructor
 public class ChatRoomMemberResponse {
     private Long chatRoomId;
