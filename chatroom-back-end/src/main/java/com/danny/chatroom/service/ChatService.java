@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -31,10 +32,41 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public List<ChatRoomResponse> getMyRooms(Long userId) {
-        return chatRoomMemberRepository.findByUserIdOrderByChatRoomLastMessageTimeDesc(userId)
-                .stream()
-                .map(chatRoomMember -> getChatRoomResponse(chatRoomMember, userId))
+        List<ChatRoomMember> chatRoomMembers = chatRoomMemberRepository.findMyRoomsByUserId(userId);
+        if (chatRoomMembers.isEmpty()) return Collections.emptyList();
+
+        List<Long> roomIds = chatRoomMembers.stream()
+                .map(chatRoomMember -> chatRoomMember.getChatRoom().getId())
                 .toList();
+
+        // Map => key: roomId, value: unreadCount
+        List<Object[]> unreadCountsRaw = chatRoomMemberRepository.countUnreadMessagesBatch(userId, roomIds);
+        Map<Long, Long> unreadCountMap = unreadCountsRaw.stream()
+                .collect(Collectors.toMap(
+                        r -> (Long) r[0],
+                        r -> (Long) r[1]
+                ));
+
+        List<ChatRoomResponse> responses = new ArrayList<>();
+        for(ChatRoomMember chatRoomMember : chatRoomMembers) {
+            ChatRoom room = chatRoomMember.getChatRoom();
+
+            Long unreadCount = unreadCountMap.getOrDefault(room.getId(), 0L);
+
+            resolveChatRoomName(userId, room);
+
+            ChatRoomResponse response = ChatRoomResponse.builder()
+                    .roomId(room.getId())
+                    .name(room.getName())
+                    .type(room.getType())
+                    .unreadMessagesCount(unreadCount)
+                    .users(null)
+                    .build();
+
+            responses.add(response);
+        }
+
+        return responses;
     }
 
     @Transactional(readOnly = true)
@@ -231,22 +263,6 @@ public class ChatService {
         }
 
         return responses;
-    }
-
-    private ChatRoomResponse getChatRoomResponse(ChatRoomMember chatRoomMember, Long userId) {
-        ChatRoom room = chatRoomMember.getChatRoom();
-
-        Long count = chatRoomMemberRepository.countUnreadMessages(userId, room.getId());
-
-        resolveChatRoomName(userId, room);
-
-        return ChatRoomResponse.builder()
-                .roomId(room.getId())
-                .name(room.getName())
-                .type(room.getType())
-                .unreadMessagesCount(count)
-                .users(null)
-                .build();
     }
 
     private void checkRoomMember(Long roomId, Long userId) {
