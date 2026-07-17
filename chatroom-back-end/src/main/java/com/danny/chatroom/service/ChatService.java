@@ -3,10 +3,7 @@ package com.danny.chatroom.service;
 import com.danny.chatroom.dto.request.AddChatRoomRequest;
 import com.danny.chatroom.dto.request.AddMemberRequest;
 import com.danny.chatroom.dto.request.SendMessageRequest;
-import com.danny.chatroom.dto.response.ChatMessageResponse;
-import com.danny.chatroom.dto.response.ChatRoomMemberResponse;
-import com.danny.chatroom.dto.response.ChatRoomResponse;
-import com.danny.chatroom.dto.response.UserResponse;
+import com.danny.chatroom.dto.response.*;
 import com.danny.chatroom.entity.ChatMessage;
 import com.danny.chatroom.entity.ChatRoom;
 import com.danny.chatroom.entity.ChatRoomMember;
@@ -22,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -51,7 +47,7 @@ public class ChatService {
 
         List<ChatRoomResponse.User> users = chatRoom.getMembers()
                 .stream()
-                .map(this::fromEntity)
+                .map(ChatRoomResponse::fromEntity)
                 .toList();
 
         resolveChatRoomName(userId, chatRoom);
@@ -76,7 +72,7 @@ public class ChatService {
 
         return chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(roomId)
                 .stream()
-                .map(this::fromEntity)
+                .map(ChatMessageResponse::fromEntity)
                 .toList();
     }
 
@@ -116,7 +112,7 @@ public class ChatService {
         message.setCreatedAt(now);
         ChatMessage savedMessage = chatMessageRepository.save(message);
 
-        return fromEntity(savedMessage);
+        return ChatMessageResponse.fromEntity(savedMessage);
     }
 
     @Transactional(readOnly = true)
@@ -188,23 +184,23 @@ public class ChatService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponse> getUsersExceptMe(Long userId) {
+    public List<UserInfo> getUsersExceptMe(Long userId) {
         List<User> allUsers = userRepository.findAll();
 
         return allUsers.stream()
                 .filter(user -> !Objects.equals(user.getId(), userId))
-                .map(user -> new UserResponse(user.getId(), user.getAccount(), user.getUsername()))
+                .map(UserInfo::fromEntity)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponse> getUsersNotInChatRooms(Long roomId, Long userId) {
+    public List<UserInfo> getUsersNotInChatRooms(Long roomId, Long userId) {
         checkRoomMember(roomId, userId);
 
         List<User> users = userRepository.findUsersNotInChatRoom(roomId);
 
         return users.stream()
-                .map(this::fromEntity)
+                .map(UserInfo::fromEntity)
                 .toList();
     }
 
@@ -280,35 +276,5 @@ public class ChatService {
                     .findFirst()
                     .ifPresent(otherUser -> room.setName(otherUser.getUsername()));
         }
-    }
-
-    private ChatMessageResponse fromEntity(ChatMessage message) {
-        return ChatMessageResponse.builder()
-                .messageId(message.getId())
-                .roomId(message.getChatRoom().getId())
-                .senderId(message.getSender().getId())
-                .senderName(message.getSender().getUsername())
-                .senderAccount(message.getSender().getAccount())
-                .content(message.getContent())
-                .messageType(message.getMessageType())
-                .createdAt(message.getCreatedAt())
-                .deletedAt(message.getDeletedAt())
-                .build();
-    }
-
-    private ChatRoomResponse.User fromEntity(ChatRoomMember member) {
-        return ChatRoomResponse.User.builder()
-                .id(member.getUser().getId())
-                .username(member.getUser().getUsername())
-                .account(member.getUser().getAccount())
-                .build();
-    }
-
-    private UserResponse fromEntity(User user) {
-        return UserResponse.builder()
-                .id(user.getId())
-                .account(user.getAccount())
-                .username(user.getUsername())
-                .build();
     }
 }

@@ -30,11 +30,10 @@ public class AuthController {
         LoginResponse response = authService.login(loginRequest);
 
         UserDetailsImpl userDetails = response.getUserDetailsImpl();
-
-        ResponseCookie responseCookie = addToken(response.getToken());
+        ResponseCookie cookie = addToken(response.getToken());
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, responseCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(fromUserDetails(userDetails));
     }
 

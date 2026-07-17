@@ -25,7 +25,7 @@
           v-if="roomType === 'PRIVATE'"
         >
           <option disabled :value="null">請選擇聊天對象</option>
-          <option v-for="u in users" :key="u.id" :value="u.id">
+          <option v-for="u in users" :key="u.userId" :value="u.userId">
             {{ u.username }} ({{ u.account }})
           </option>
         </select>
@@ -36,7 +36,7 @@
           v-if="roomType === 'GROUP'"
           multiple
         >
-          <option v-for="u in users" :key="u.id" :value="u.id">
+          <option v-for="u in users" :key="u.userId" :value="u.userId">
             {{ u.username }} ({{ u.account }})
           </option>
         </select>

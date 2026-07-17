@@ -3,10 +3,7 @@ package com.danny.chatroom.controller;
 import com.danny.chatroom.annotation.CurrentUser;
 import com.danny.chatroom.dto.request.AddChatRoomRequest;
 import com.danny.chatroom.dto.request.AddMemberRequest;
-import com.danny.chatroom.dto.response.ChatMessageResponse;
-import com.danny.chatroom.dto.response.ChatRoomMemberResponse;
-import com.danny.chatroom.dto.response.ChatRoomResponse;
-import com.danny.chatroom.dto.response.UserResponse;
+import com.danny.chatroom.dto.response.*;
 import com.danny.chatroom.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -57,15 +54,15 @@ public class ChatController {
     }
 
     @GetMapping("/available-users")
-    public ResponseEntity<List<UserResponse>> getUsersExceptMe(@CurrentUser Long userId) {
-        List<UserResponse> users = chatService.getUsersExceptMe(userId);
+    public ResponseEntity<List<UserInfo>> getUsersExceptMe(@CurrentUser Long userId) {
+        List<UserInfo> users = chatService.getUsersExceptMe(userId);
         return ResponseEntity.ok(users);
     }
 
     @GetMapping("/{roomId}/available-users")
-    public ResponseEntity<List<UserResponse>> getUsersExceptExisting(@PathVariable Long roomId,
+    public ResponseEntity<List<UserInfo>> getUsersExceptExisting(@PathVariable Long roomId,
                                                                      @CurrentUser Long userId) {
-        List<UserResponse> users = chatService.getUsersNotInChatRooms(roomId, userId);
+        List<UserInfo> users = chatService.getUsersNotInChatRooms(roomId, userId);
         return ResponseEntity.ok(users);
     }
 

@@ -1,5 +1,6 @@
 package com.danny.chatroom.dto.response;
 
+import com.danny.chatroom.entity.ChatMessage;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -19,4 +20,18 @@ public class ChatMessageResponse {
     private String messageType;
     private LocalDateTime createdAt;
     private LocalDateTime deletedAt;
+
+    public static ChatMessageResponse fromEntity(ChatMessage message) {
+        return ChatMessageResponse.builder()
+                .messageId(message.getId())
+                .roomId(message.getChatRoom().getId())
+                .senderId(message.getSender().getId())
+                .senderName(message.getSender().getUsername())
+                .senderAccount(message.getSender().getAccount())
+                .content(message.getContent())
+                .messageType(message.getMessageType())
+                .createdAt(message.getCreatedAt())
+                .deletedAt(message.getDeletedAt())
+                .build();
+    }
 }

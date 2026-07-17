@@ -41,7 +41,7 @@
       <div class="input-group mb-3">
         <span class="input-group-text">人員</span>
         <select class="form-control" v-model="selectedUserIds" multiple>
-          <option v-for="u in usersForAdding" :key="u.id" :value="u.id">
+          <option v-for="u in usersForAdding" :key="u.userId" :value="u.userId">
             {{ u.username }} ({{ u.account }})
           </option>
         </select>
