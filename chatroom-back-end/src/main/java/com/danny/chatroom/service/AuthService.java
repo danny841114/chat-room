@@ -43,7 +43,7 @@ public class AuthService implements UserDetailsService {
         String account = loginRequest.getAccount();
         String password = loginRequest.getPassword();
 
-        Authentication authenticationToken = new UsernamePasswordAuthenticationToken(account, password);
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(account, password);
         Authentication authentication = authenticationManager.authenticate(authenticationToken);
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
