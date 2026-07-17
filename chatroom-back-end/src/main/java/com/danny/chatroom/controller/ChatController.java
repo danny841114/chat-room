@@ -65,7 +65,7 @@ public class ChatController {
     @GetMapping("/{roomId}/available-users")
     public ResponseEntity<List<UserResponse>> getUsersExceptExisting(@PathVariable Long roomId,
                                                                      @CurrentUser Long userId) {
-        List<UserResponse> users = chatService.getUsersExceptExistingMembers(roomId, userId);
+        List<UserResponse> users = chatService.getUsersNotInChatRooms(roomId, userId);
         return ResponseEntity.ok(users);
     }
 

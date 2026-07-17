@@ -197,20 +197,13 @@ public class ChatService {
                 .toList();
     }
 
-    // TODO 之後把過濾邏輯寫至Repository層
     @Transactional(readOnly = true)
-    public List<UserResponse> getUsersExceptExistingMembers(Long roomId, Long userId) {
+    public List<UserResponse> getUsersNotInChatRooms(Long roomId, Long userId) {
         checkRoomMember(roomId, userId);
 
-        List<ChatRoomMember> chatRoomMembers = chatRoomMemberRepository.findByChatRoomId(roomId);
-        Set<Long> existingUserIds = chatRoomMembers.stream()
-                .map(x -> x.getUser().getId())
-                .collect(Collectors.toSet());
+        List<User> users = userRepository.findUsersNotInChatRoom(roomId);
 
-        List<User> allUsers = userRepository.findAll();
-
-        return allUsers.stream()
-                .filter(user -> !existingUserIds.contains(user.getId()))
+        return users.stream()
                 .map(this::fromEntity)
                 .toList();
     }
