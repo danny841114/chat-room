@@ -8,13 +8,13 @@
         <li
           class="list-group-item d-flex justify-content-between align-items-center"
           v-for="u in props.chatRoom.users"
-          :key="u.id"
+          :key="u.userId"
         >
           <span>{{ u.username }} ({{ u.account }})</span>
           <button
             class="btn btn-danger"
             v-if="chatRoom.type === 'GROUP'"
-            @click="deleteMember(u.id, u.username, u.account)"
+            @click="deleteMember(u.userId, u.username, u.account)"
           >
             移除
           </button>
@@ -91,7 +91,7 @@ const deleteMember = async (userId, username, account) => {
     );
 
     if (response.status === 204) {
-      const index = props.chatRoom.users.findIndex((u) => u.id === userId);
+      const index = props.chatRoom.users.findIndex((u) => u.userId === userId);
 
       if (index !== -1) props.chatRoom.users.splice(index, 1);
     }

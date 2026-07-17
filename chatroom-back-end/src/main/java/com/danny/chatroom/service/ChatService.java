@@ -46,9 +46,9 @@ public class ChatService {
 
         Long count = chatRoomMemberRepository.countUnreadMessages(userId, roomId);
 
-        List<ChatRoomResponse.User> users = chatRoom.getMembers()
+        List<UserInfo> users = chatRoom.getMembers()
                 .stream()
-                .map(ChatRoomResponse::fromEntity)
+                .map(UserInfo::fromEntity)
                 .toList();
 
         resolveChatRoomName(userId, chatRoom);
@@ -173,10 +173,9 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public List<UserInfo> getUsersExceptMe(Long userId) {
-        List<User> allUsers = userRepository.findAll();
+        List<User> otherUsers = userRepository.findAllByIdNot(userId);
 
-        return allUsers.stream()
-                .filter(user -> !Objects.equals(user.getId(), userId))
+        return otherUsers.stream()
                 .map(UserInfo::fromEntity)
                 .toList();
     }
