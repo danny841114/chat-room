@@ -1,5 +1,6 @@
 package com.danny.chatroom.dto.response;
 
+import com.danny.chatroom.entity.ChatRoom;
 import com.danny.chatroom.entity.ChatRoomMember;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
@@ -35,6 +36,16 @@ public class ChatRoomResponse {
                 .id(member.getUser().getId())
                 .username(member.getUser().getUsername())
                 .account(member.getUser().getAccount())
+                .build();
+    }
+
+    public static ChatRoomResponse fromEntity(ChatRoom chatRoom) {
+        return ChatRoomResponse.builder()
+                .roomId(chatRoom.getId())
+                .name(chatRoom.getName())
+                .type(chatRoom.getType())
+                .unreadMessagesCount(0L)
+                .users(null)
                 .build();
     }
 }

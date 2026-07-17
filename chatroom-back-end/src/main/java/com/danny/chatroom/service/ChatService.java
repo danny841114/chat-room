@@ -123,29 +123,20 @@ public class ChatService {
 
     @Transactional
     public ChatRoomResponse createChatRoom(AddChatRoomRequest addChatRoomRequest, Long userId) {
-        Set<Long> memberIds = addChatRoomRequest.getMemberIds();
+        Set<Long> allMemberIds = new HashSet<>(addChatRoomRequest.getMemberIds());
+
         String type = addChatRoomRequest.getType();
 
         if ("PRIVATE".equals(type)) {
-            Long targetUserId = memberIds.iterator().next(); // get next factor
+            Long targetUserId = allMemberIds.iterator().next(); // get next factor
 
-            List<ChatRoom> privateRooms = chatRoomMemberRepository.findPrivateRoomsByUserId(userId);
+            if (userId.equals(targetUserId)) throw new IllegalArgumentException("Can not create a private chat with yourself");
 
-            for (ChatRoom room : privateRooms) {
-                List<ChatRoomMember> members = room.getMembers();   // two ChatRoomMember object
+            Optional<ChatRoom> existingRoom = chatRoomRepository.findPrivateRoomBetweenUsers(userId, targetUserId);
 
-                boolean existed = room.getMembers().stream()
-                        .anyMatch(m -> m.getUser().getId().equals(targetUserId));
-
-                if (existed) {
-                    return ChatRoomResponse.builder()
-                            .roomId(room.getId())
-                            .name(room.getName())
-                            .type(room.getType())
-                            .unreadMessagesCount(0L)
-                            .users(null)
-                            .build();
-                }
+            if (existingRoom.isPresent()) {
+                ChatRoom room = existingRoom.get();
+                return ChatRoomResponse.fromEntity(room);
             }
         }
 
@@ -158,13 +149,15 @@ public class ChatService {
         newChatRoom.setLastMessageTime(now);
         ChatRoom savedChatRoom = chatRoomRepository.save(newChatRoom);
 
+        allMemberIds.add(userId);
+
+        List<User> users = userRepository.findAllById(allMemberIds);
+        if (users.size() != allMemberIds.size()) {
+            throw new EntityNotFoundException("One or more users not found");
+        }
+
         List<ChatRoomMember> chatRoomMembers = new ArrayList<>();
-
-        memberIds.add(userId);
-        for (Long memberId : memberIds) {
-            User user = userRepository.findById(memberId)
-                    .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
+        for (User user : users) {
             ChatRoomMember chatRoomMember = new ChatRoomMember();
             chatRoomMember.setUser(user);
             chatRoomMember.setChatRoom(savedChatRoom);
@@ -175,13 +168,7 @@ public class ChatService {
         }
         chatRoomMemberRepository.saveAll(chatRoomMembers);
 
-        return ChatRoomResponse.builder()
-                .roomId(savedChatRoom.getId())
-                .name(savedChatRoom.getName())
-                .type(savedChatRoom.getType())
-                .unreadMessagesCount(0L)
-                .users(null)
-                .build();
+        return ChatRoomResponse.fromEntity(savedChatRoom);
     }
 
     @Transactional(readOnly = true)
