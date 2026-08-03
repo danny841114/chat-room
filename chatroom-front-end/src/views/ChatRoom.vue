@@ -6,16 +6,9 @@
 
       <button class="btn btn-primary mb-3" @click="openModal">新增聊天</button>
 
-      <div
-        v-for="room in chatRooms"
-        :key="room.roomId"
-        class="list-group"
-        style="cursor: pointer"
-        @click="loadMessages(room.roomId)"
-      >
-        <div
-          class="list-group-item list-group-item-action room-name d-flex justify-content-between"
-        >
+      <div v-for="room in chatRooms" :key="room.roomId" class="list-group" style="cursor: pointer"
+        @click="loadMessages(room.roomId)">
+        <div class="list-group-item list-group-item-action room-name d-flex justify-content-between">
           <span>
             <strong class="type-badge">{{
               room.type === "PRIVATE" ? "私" : "群"
@@ -31,41 +24,29 @@
 
     <!-- 右側聊天室主體 -->
     <main class="chat-main">
-      <div
-        class="chat-header"
-        style="cursor: pointer"
-        @click="openChatRoomDetailModal"
-      >
+      <div class="chat-header" style="cursor: pointer" @click="openChatRoomDetailModal">
         {{ currentChatRoom.name }}
       </div>
 
       <div class="messages">
-        <div
-          v-for="msg in messages"
-          :key="msg.id"
-          class="message"
-          :class="{
-            'my-message': Number(msg.senderId) === Number(authStore.userId),
-          }"
-        >
+        <div v-for="msg in messages" :key="msg.id" class="message" :class="{
+          'my-message': Number(msg.senderId) === Number(authStore.userId),
+        }">
           <strong>{{ msg.senderName }} ({{ msg.senderAccount }}) :</strong>
           &nbsp;
           <span v-if="!msg.deletedAt">{{ msg.content }}</span>
           <span v-else style="color: gray">--- 訊息已被刪除 ---</span>
 
-          <button
-            v-if="!msg.deletedAt && msg.senderId === Number(authStore.userId)"
-            class="message-menu-btn"
-            @click="toggleMenu(msg.messageId)"
-          >
+          <button v-if="msg.senderId === Number(authStore.userId)" class="message-menu-btn"
+            @click="toggleMenu(msg.messageId)">
             ⋮
           </button>
           <div v-if="openedMenuId === msg.messageId" class="message-menu">
-            <button
-              class="btn btn-danger"
-              @click="recallMessage(msg.messageId)"
-            >
+            <button v-if="!msg.deletedAt" class="btn btn-danger" @click="recallMessage(msg.messageId)">
               撤回訊息
+            </button>
+            <button v-else class="btn btn-danger" @click="restoreDeletedMessage(msg.messageId)">
+              復原訊息
             </button>
           </div>
 
@@ -76,36 +57,20 @@
       </div>
 
       <div class="input-area">
-        <input
-          v-model="message"
-          class="form-control"
-          placeholder="輸入訊息..."
-          :disabled="isChatRoomIdEmpty"
-          @keyup.enter="sendMessage"
-        />
-        <button
-          class="btn btn-primary send-btn"
-          :disabled="isChatRoomIdEmpty"
-          @click="sendMessage"
-        >
+        <input v-model="message" class="form-control" placeholder="輸入訊息..." :disabled="isChatRoomIdEmpty"
+          @keyup.enter="sendMessage" />
+        <button class="btn btn-primary send-btn" :disabled="isChatRoomIdEmpty" @click="sendMessage">
           送出
         </button>
       </div>
     </main>
   </div>
 
-  <AddChatRoom
-    v-show="showAddChatRoomModal"
-    @close="showAddChatRoomModal = false"
-    @created="handleCreated"
-  ></AddChatRoom>
+  <AddChatRoom v-show="showAddChatRoomModal" @close="showAddChatRoomModal = false" @created="handleCreated">
+  </AddChatRoom>
 
-  <ChatRoomDetail
-    v-show="showChatRoomDetailModal"
-    :chat-room="currentChatRoom"
-    @created="handleAddMember"
-    @close="showChatRoomDetailModal = false"
-  ></ChatRoomDetail>
+  <ChatRoomDetail v-show="showChatRoomDetailModal" :chat-room="currentChatRoom" @created="handleAddMember"
+    @close="showChatRoomDetailModal = false"></ChatRoomDetail>
 </template>
 
 <script setup>
@@ -201,7 +166,24 @@ const recallMessage = async (msgId) => {
     );
 
     const msg = messages.value.find((m) => m.messageId === msgId);
-    if (msg) msg.deletedAt = "--- 訊息已被刪除 ---";
+    if (msg) msg.deletedAt = new Date();
+  } catch (e) {
+    console.error("Error delete message", e);
+  }
+
+  openedMenuId.value = null;
+};
+
+const restoreDeletedMessage = async (msgId) => {
+  try {
+    await axios.put(
+      `${apiBase}/api/chat-rooms/${currentChatRoom.value.roomId}/messages/${msgId}`,
+      null,
+      { withCredentials: true }
+    );
+
+    const msg = messages.value.find((m) => m.messageId === msgId);
+    if (msg) msg.deletedAt = null;
   } catch (e) {
     console.error("Error delete message", e);
   }
@@ -378,9 +360,12 @@ watch(currentChatRoom, (currentChatRoom) => {
 }
 
 .room-name {
-  white-space: nowrap; /* 不換行 */
-  overflow: hidden; /* 超出隱藏 */
-  text-overflow: ellipsis; /* 顯示 ... */
+  white-space: nowrap;
+  /* 不換行 */
+  overflow: hidden;
+  /* 超出隱藏 */
+  text-overflow: ellipsis;
+  /* 顯示 ... */
 }
 
 .send-btn {

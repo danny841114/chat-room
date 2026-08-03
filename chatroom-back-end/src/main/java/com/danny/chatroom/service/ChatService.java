@@ -120,6 +120,19 @@ public class ChatService {
                 .orElseThrow(() -> new EntityNotFoundException("Message not found"));
 
         chatMessage.setDeletedAt(LocalDateTime.now());
+
+        chatMessageRepository.save(chatMessage);
+    }
+
+    @Transactional
+    public void restoreDeletedMessage(Long roomId, Long messageId, Long userId) {
+        checkRoomMember(roomId, userId);
+
+        ChatMessage chatMessage = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new EntityNotFoundException("Message not found"));
+
+        chatMessage.setDeletedAt(null);
+
         chatMessageRepository.save(chatMessage);
     }
 
@@ -141,17 +154,18 @@ public class ChatService {
         chatRoomRepository.save(room);
 
         ChatMessage message = new ChatMessage();
+
         message.setChatRoom(room);
         message.setSender(sender);
         message.setContent(request.getContent());
         message.setMessageType("TEXT");
         message.setCreatedAt(now);
+
         ChatMessage savedMessage = chatMessageRepository.save(message);
 
         return ChatMessageResponse.fromEntity(savedMessage);
     }
 
-    @Transactional(readOnly = true)
     public List<ChatRoomMember> findByChatRoomId(Long roomId) {
         return chatRoomMemberRepository.findByChatRoomId(roomId);
     }
@@ -180,10 +194,12 @@ public class ChatService {
         LocalDateTime now = LocalDateTime.now();
 
         ChatRoom newChatRoom = new ChatRoom();
+
         newChatRoom.setName(addChatRoomRequest.getName());
         newChatRoom.setType(type);
         newChatRoom.setCreatedAt(now);
         newChatRoom.setLastMessageTime(now);
+
         ChatRoom savedChatRoom = chatRoomRepository.save(newChatRoom);
 
         allMemberIds.add(userId);
@@ -196,6 +212,7 @@ public class ChatService {
         List<ChatRoomMember> chatRoomMembers = new ArrayList<>();
         for (User user : users) {
             ChatRoomMember chatRoomMember = new ChatRoomMember();
+
             chatRoomMember.setUser(user);
             chatRoomMember.setChatRoom(savedChatRoom);
             chatRoomMember.setJoinedAt(savedChatRoom.getCreatedAt());
@@ -269,7 +286,7 @@ public class ChatService {
     }
 
     private void checkRoomMember(Long roomId, Long userId) {
-        boolean isMember = chatRoomMemberRepository.existsByChatRoomIdAndUserId(roomId, userId);
+        Boolean isMember = chatRoomMemberRepository.existsByChatRoomIdAndUserId(roomId, userId);
 
         if (!isMember) throw new AccessDeniedException("Not chat room member, operation failed");
     }

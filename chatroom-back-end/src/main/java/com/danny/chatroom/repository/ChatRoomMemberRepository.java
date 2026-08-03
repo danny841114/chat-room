@@ -4,14 +4,12 @@ import com.danny.chatroom.entity.ChatRoomMember;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.List;
 
-@Repository
 public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, Long> {
-    boolean existsByChatRoomIdAndUserId(Long roomId, Long userId);
+    Boolean existsByChatRoomIdAndUserId(Long roomId, Long userId);
 
     ChatRoomMember findByChatRoomIdAndUserId(Long roomId, Long userId);
 

@@ -46,6 +46,14 @@ public class ChatController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/{roomId}/messages/{messageId}")
+    public ResponseEntity<?> restoreDeletedMessage(@PathVariable Long roomId,
+                                                   @PathVariable Long messageId,
+                                                   @CurrentUser Long userId) {
+        chatService.restoreDeletedMessage(roomId, messageId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping
     public ResponseEntity<ChatRoomResponse> createChatRoom(@RequestBody AddChatRoomRequest request,
                                                            @CurrentUser Long userId) {
@@ -61,7 +69,7 @@ public class ChatController {
 
     @GetMapping("/{roomId}/available-users")
     public ResponseEntity<List<UserInfo>> getUsersExceptExisting(@PathVariable Long roomId,
-                                                                     @CurrentUser Long userId) {
+                                                                 @CurrentUser Long userId) {
         List<UserInfo> users = chatService.getUsersNotInChatRooms(roomId, userId);
         return ResponseEntity.ok(users);
     }
