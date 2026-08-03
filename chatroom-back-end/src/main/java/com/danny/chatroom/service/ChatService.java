@@ -1,14 +1,10 @@
 package com.danny.chatroom.service;
 
 import com.danny.chatroom.dto.request.AddChatRoomRequest;
-import com.danny.chatroom.dto.request.AddMemberRequest;
-import com.danny.chatroom.dto.request.SendMessageRequest;
 import com.danny.chatroom.dto.response.*;
-import com.danny.chatroom.entity.ChatMessage;
 import com.danny.chatroom.entity.ChatRoom;
 import com.danny.chatroom.entity.ChatRoomMember;
 import com.danny.chatroom.entity.User;
-import com.danny.chatroom.repository.ChatMessageRepository;
 import com.danny.chatroom.repository.ChatRoomMemberRepository;
 import com.danny.chatroom.repository.ChatRoomRepository;
 import com.danny.chatroom.repository.UserRepository;
@@ -27,7 +23,6 @@ import java.util.stream.Collectors;
 @Service
 public class ChatService {
     private final ChatRoomMemberRepository chatRoomMemberRepository;
-    private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final UserRepository userRepository;
 
@@ -98,79 +93,6 @@ public class ChatService {
     }
 
     @Transactional
-    public List<ChatMessageResponse> getMessages(Long roomId, Long userId) {
-        checkRoomMember(roomId, userId);
-
-        // update last read time
-        ChatRoomMember chatRoomMember = chatRoomMemberRepository.findByChatRoomIdAndUserId(roomId, userId);
-        chatRoomMember.setLastReadAt(LocalDateTime.now());
-        chatRoomMemberRepository.save(chatRoomMember);
-
-        return chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(roomId)
-                .stream()
-                .map(ChatMessageResponse::fromEntity)
-                .toList();
-    }
-
-    @Transactional
-    public void deleteMessage(Long roomId, Long messageId, Long userId) {
-        checkRoomMember(roomId, userId);
-
-        ChatMessage chatMessage = chatMessageRepository.findById(messageId)
-                .orElseThrow(() -> new EntityNotFoundException("Message not found"));
-
-        chatMessage.setDeletedAt(LocalDateTime.now());
-
-        chatMessageRepository.save(chatMessage);
-    }
-
-    @Transactional
-    public void restoreDeletedMessage(Long roomId, Long messageId, Long userId) {
-        checkRoomMember(roomId, userId);
-
-        ChatMessage chatMessage = chatMessageRepository.findById(messageId)
-                .orElseThrow(() -> new EntityNotFoundException("Message not found"));
-
-        chatMessage.setDeletedAt(null);
-
-        chatMessageRepository.save(chatMessage);
-    }
-
-    @Transactional
-    public ChatMessageResponse sendMessage(Long roomId, SendMessageRequest request) {
-        Long senderId = request.getSenderId();
-
-        checkRoomMember(roomId, senderId);
-
-        ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("Chat room not found"));
-
-        User sender = userRepository.findById(senderId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        LocalDateTime now = LocalDateTime.now();
-
-        room.setLastMessageTime(now);
-        chatRoomRepository.save(room);
-
-        ChatMessage message = new ChatMessage();
-
-        message.setChatRoom(room);
-        message.setSender(sender);
-        message.setContent(request.getContent());
-        message.setMessageType("TEXT");
-        message.setCreatedAt(now);
-
-        ChatMessage savedMessage = chatMessageRepository.save(message);
-
-        return ChatMessageResponse.fromEntity(savedMessage);
-    }
-
-    public List<ChatRoomMember> findByChatRoomId(Long roomId) {
-        return chatRoomMemberRepository.findByChatRoomId(roomId);
-    }
-
-    @Transactional
     public ChatRoomResponse createChatRoom(AddChatRoomRequest addChatRoomRequest, Long userId) {
         Set<Long> allMemberIds = new HashSet<>(addChatRoomRequest.getMemberIds());
 
@@ -186,9 +108,7 @@ public class ChatService {
 
             Optional<ChatRoom> existingRoom = chatRoomRepository.findPrivateRoomBetweenUsers(userId, targetUserId);
 
-            if (existingRoom.isPresent()) {
-                return ChatRoomResponse.fromEntity(existingRoom.get());
-            }
+            if (existingRoom.isPresent()) return ChatRoomResponse.fromEntity(existingRoom.get());
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -223,66 +143,6 @@ public class ChatService {
         chatRoomMemberRepository.saveAll(chatRoomMembers);
 
         return ChatRoomResponse.fromEntity(savedChatRoom);
-    }
-
-    public List<UserInfo> getUsersExceptMe(Long userId) {
-        List<User> otherUsers = userRepository.findAllByIdNot(userId);
-
-        return otherUsers.stream()
-                .map(UserInfo::fromEntity)
-                .toList();
-    }
-
-    public List<UserInfo> getUsersNotInChatRooms(Long roomId, Long userId) {
-        checkRoomMember(roomId, userId);
-
-        List<User> users = userRepository.findUsersNotInChatRoom(roomId);
-
-        return users.stream()
-                .map(UserInfo::fromEntity)
-                .toList();
-    }
-
-    @Transactional
-    public void deleteChatRoomUser(Long roomId, Long deleteUserId, Long userId) {
-        checkRoomMember(roomId, userId);
-        checkRoomMember(roomId, deleteUserId);
-
-        chatRoomMemberRepository.deleteByChatRoomIdAndUserId(roomId, deleteUserId);
-    }
-
-    @Transactional
-    public List<ChatRoomMemberResponse> addChatRoomUsers(Long roomId, AddMemberRequest request, Long userId) {
-        checkRoomMember(roomId, userId);
-
-        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> (new EntityNotFoundException("Chat room not found")));
-
-        List<ChatRoomMemberResponse> responses = new ArrayList<>();
-        List<Long> userIds = request.getUserIds();
-        for (Long newUserId : userIds) {
-            User user = userRepository.findById(newUserId)
-                    .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-            LocalDateTime now = LocalDateTime.now();
-
-            ChatRoomMember chatRoomMember = new ChatRoomMember();
-            chatRoomMember.setChatRoom(chatRoom);
-            chatRoomMember.setUser(user);
-            chatRoomMember.setJoinedAt(now);
-            chatRoomMember.setLastReadAt(now);
-            chatRoomMemberRepository.save(chatRoomMember);
-
-            ChatRoomMemberResponse response = ChatRoomMemberResponse.builder()
-                    .chatRoomId(roomId)
-                    .userId(newUserId)
-                    .joinedAt(now)
-                    .lastReadAt(now)
-                    .build();
-            responses.add(response);
-        }
-
-        return responses;
     }
 
     private void checkRoomMember(Long roomId, Long userId) {
