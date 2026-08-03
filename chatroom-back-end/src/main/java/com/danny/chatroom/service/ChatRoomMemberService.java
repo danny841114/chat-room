@@ -27,14 +27,16 @@ public class ChatRoomMemberService {
     private final ChatRoomRepository chatRoomRepository;
     private final UserRepository userRepository;
 
-    public List<ChatRoomMember> findByChatRoomId(Long roomId) {
-        return chatRoomMemberRepository.findByChatRoomId(roomId);
+    public List<Long> findUserIdsByChatRoomId(Long roomId) {
+        return chatRoomMemberRepository.findByChatRoomId(roomId)
+                .stream()
+                .map(chatRoomMember -> chatRoomMember.getUser().getId())
+                .toList();
     }
 
     public List<UserInfo> getUsersExceptMe(Long userId) {
-        List<User> otherUsers = userRepository.findAllByIdNot(userId);
-
-        return otherUsers.stream()
+        return userRepository.findAllByIdNot(userId)
+                .stream()
                 .map(UserInfo::fromEntity)
                 .toList();
     }
@@ -42,9 +44,8 @@ public class ChatRoomMemberService {
     public List<UserInfo> getUsersNotInChatRooms(Long roomId, Long userId) {
         checkRoomMember(roomId, userId);
 
-        List<User> users = userRepository.findUsersNotInChatRoom(roomId);
-
-        return users.stream()
+        return userRepository.findUsersNotInChatRoom(roomId)
+                .stream()
                 .map(UserInfo::fromEntity)
                 .toList();
     }
@@ -77,6 +78,7 @@ public class ChatRoomMemberService {
                     .joinedAt(now)
                     .lastReadAt(now)
                     .build();
+
             responses.add(response);
         }
 
