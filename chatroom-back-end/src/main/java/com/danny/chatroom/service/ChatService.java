@@ -48,16 +48,18 @@ public class ChatService {
                 ));
 
         List<ChatRoomResponse> responses = new ArrayList<>();
-        for(ChatRoomMember chatRoomMember : chatRoomMembers) {
+        for (ChatRoomMember chatRoomMember : chatRoomMembers) {
             ChatRoom room = chatRoomMember.getChatRoom();
 
             Long unreadCount = unreadCountMap.getOrDefault(room.getId(), 0L);
 
-            resolveChatRoomName(userId, room);
+            String roomName = "PRIVATE".equals(room.getType())
+                    ? getPrivateRoomName(userId, room)
+                    : room.getName();
 
             ChatRoomResponse response = ChatRoomResponse.builder()
                     .roomId(room.getId())
-                    .name(room.getName())
+                    .name(roomName)
                     .type(room.getType())
                     .unreadMessagesCount(unreadCount)
                     .users(null)
@@ -83,11 +85,13 @@ public class ChatService {
                 .map(UserInfo::fromEntity)
                 .toList();
 
-        resolveChatRoomName(userId, chatRoom);
+        String roomName = "PRIVATE".equals(chatRoom.getType())
+                ? getPrivateRoomName(userId, chatRoom)
+                : chatRoom.getName();
 
         return ChatRoomResponse.builder()
                 .roomId(chatRoom.getId())
-                .name(chatRoom.getName())
+                .name(roomName)
                 .type(chatRoom.getType())
                 .unreadMessagesCount(count)
                 .users(users)
@@ -162,7 +166,8 @@ public class ChatService {
         if ("PRIVATE".equals(type)) {
             Long targetUserId = allMemberIds.iterator().next(); // get next factor
 
-            if (userId.equals(targetUserId)) throw new IllegalArgumentException("Can not create a private chat with yourself");
+            if (userId.equals(targetUserId))
+                throw new IllegalArgumentException("Can not create a private chat with yourself");
 
             Optional<ChatRoom> existingRoom = chatRoomRepository.findPrivateRoomBetweenUsers(userId, targetUserId);
 
@@ -271,13 +276,12 @@ public class ChatService {
         if (!isMember) throw new AccessDeniedException("Not chat room member, operation failed");
     }
 
-    private void resolveChatRoomName(Long userId, ChatRoom room) {
-        if ("PRIVATE".equals(room.getType())) {
-            room.getMembers().stream()
-                    .map(ChatRoomMember::getUser)
-                    .filter(u -> !Objects.equals(u.getId(), userId))
-                    .findFirst()
-                    .ifPresent(otherUser -> room.setName(otherUser.getUsername()));
-        }
+    private String getPrivateRoomName(Long userId, ChatRoom room) {
+        return room.getMembers().stream()
+                .map(ChatRoomMember::getUser)
+                .filter(u -> !Objects.equals(u.getId(), userId))
+                .findFirst()
+                .map(User::getUsername)
+                .orElse(null);
     }
 }

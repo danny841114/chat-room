@@ -40,15 +40,15 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
     List<ChatRoomMember> findMyRoomsByUserId(@Param("userId") Long userId);
 
     @Query("""
-                SELECT rm.chatRoom.id, COUNT(m.id)
-                FROM ChatRoomMember rm
-                JOIN rm.chatRoom.messages m
-                WHERE rm.user.id = :userId
-                AND rm.chatRoom.id IN :roomIds
-                AND m.createdAt > rm.lastReadAt
-                AND m.sender.id <> :userId
-                AND m.deletedAt IS NULL
-                GROUP BY rm.chatRoom.id
+            SELECT rm.chatRoom.id, COUNT(m.id)
+            FROM ChatRoomMember rm
+            LEFT JOIN rm.chatRoom.messages m
+              ON m.createdAt > rm.lastReadAt
+              AND m.sender.id <> :userId
+              AND m.deletedAt IS NULL
+            WHERE rm.user.id = :userId
+            AND rm.chatRoom.id IN :roomIds
+            GROUP BY rm.chatRoom.id
             """)
     List<Object[]> countUnreadMessagesBatch(@Param("userId") Long userId, @Param("roomIds") Collection<Long> roomIds);
 }
