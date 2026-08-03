@@ -20,14 +20,14 @@ public class ChatController {
 
     @GetMapping
     public ResponseEntity<List<ChatRoomResponse>> getRooms(@CurrentUser Long userId) {
-        List<ChatRoomResponse> rooms = chatService.getMyRooms(userId);
+        List<ChatRoomResponse> rooms = chatService.getRoomsByUserId(userId);
         return ResponseEntity.ok(rooms);
     }
 
     @GetMapping("/{roomId}")
     public ResponseEntity<ChatRoomResponse> getRoom(@PathVariable Long roomId,
                                                     @CurrentUser Long userId) {
-        ChatRoomResponse room = chatService.getRoom(roomId, userId);
+        ChatRoomResponse room = chatService.getRoomById(roomId, userId);
         return ResponseEntity.ok(room);
     }
 

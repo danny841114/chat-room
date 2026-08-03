@@ -37,7 +37,7 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
                 WHERE m.user.id = :userId
                 ORDER BY r.lastMessageTime DESC
             """)
-    List<ChatRoomMember> findMyRoomsByUserId(@Param("userId") Long userId);
+    List<ChatRoomMember> findRoomsByUserId(@Param("userId") Long userId);
 
     @Query("""
             SELECT rm.chatRoom.id, COUNT(m.id)

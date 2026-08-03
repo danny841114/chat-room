@@ -11,14 +11,12 @@ import java.util.Optional;
 @Repository
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     @Query("""
-                SELECT r FROM ChatRoom r
-                WHERE r.type = 'PRIVATE'
-                AND r.id IN (
-                    SELECT m1.chatRoom.id FROM ChatRoomMember m1 WHERE m1.user.id = :userA
-                )
-                AND r.id IN (
-                    SELECT m2.chatRoom.id FROM ChatRoomMember m2 WHERE m2.user.id = :userB
-                )
+            SELECT r FROM ChatRoom r
+            JOIN r.members m1
+            JOIN r.members m2
+            WHERE r.type = 'PRIVATE'
+              AND m1.user.id = :userA
+              AND m2.user.id = :userB
             """)
     Optional<ChatRoom> findPrivateRoomBetweenUsers(@Param("userA") Long userA, @Param("userB") Long userB);
 }

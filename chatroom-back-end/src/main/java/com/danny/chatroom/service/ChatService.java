@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Service
 public class ChatService {
@@ -30,9 +31,8 @@ public class ChatService {
     private final ChatRoomRepository chatRoomRepository;
     private final UserRepository userRepository;
 
-    @Transactional(readOnly = true)
-    public List<ChatRoomResponse> getMyRooms(Long userId) {
-        List<ChatRoomMember> chatRoomMembers = chatRoomMemberRepository.findMyRoomsByUserId(userId);
+    public List<ChatRoomResponse> getRoomsByUserId(Long userId) {
+        List<ChatRoomMember> chatRoomMembers = chatRoomMemberRepository.findRoomsByUserId(userId);
         if (chatRoomMembers.isEmpty()) return Collections.emptyList();
 
         List<Long> roomIds = chatRoomMembers.stream()
@@ -71,8 +71,7 @@ public class ChatService {
         return responses;
     }
 
-    @Transactional(readOnly = true)
-    public ChatRoomResponse getRoom(Long roomId, Long userId) {
+    public ChatRoomResponse getRoomById(Long roomId, Long userId) {
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("Chat room not found"));
 
@@ -164,6 +163,8 @@ public class ChatService {
         String type = addChatRoomRequest.getType();
 
         if ("PRIVATE".equals(type)) {
+            allMemberIds.remove(userId); // avoid get current user ID
+
             Long targetUserId = allMemberIds.iterator().next(); // get next factor
 
             if (userId.equals(targetUserId))
@@ -172,8 +173,7 @@ public class ChatService {
             Optional<ChatRoom> existingRoom = chatRoomRepository.findPrivateRoomBetweenUsers(userId, targetUserId);
 
             if (existingRoom.isPresent()) {
-                ChatRoom room = existingRoom.get();
-                return ChatRoomResponse.fromEntity(room);
+                return ChatRoomResponse.fromEntity(existingRoom.get());
             }
         }
 
@@ -208,7 +208,6 @@ public class ChatService {
         return ChatRoomResponse.fromEntity(savedChatRoom);
     }
 
-    @Transactional(readOnly = true)
     public List<UserInfo> getUsersExceptMe(Long userId) {
         List<User> otherUsers = userRepository.findAllByIdNot(userId);
 
@@ -217,7 +216,6 @@ public class ChatService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
     public List<UserInfo> getUsersNotInChatRooms(Long roomId, Long userId) {
         checkRoomMember(roomId, userId);
 

@@ -28,7 +28,7 @@ public class ChatWebSocketController {
         List<ChatRoomMember> chatRoomMembers = chatService.findByChatRoomId(roomId);
         for (ChatRoomMember chatRoomMember : chatRoomMembers) {
             Long memberId = chatRoomMember.getUser().getId();
-            List<ChatRoomResponse> myRooms = chatService.getMyRooms(memberId);
+            List<ChatRoomResponse> myRooms = chatService.getRoomsByUserId(memberId);
             messagingTemplate.convertAndSend("/topic/users/" + memberId + "/rooms", myRooms);
         }
     }
