@@ -77,11 +77,10 @@
 import { ref, watch, computed, onMounted, onBeforeUnmount } from "vue";
 import { Client } from "@stomp/stompjs";
 import { useAuthStore } from "@/stores/auth";
+import { chatApi } from "@/api/chatApi";
 import SockJS from "sockjs-client";
-import axios from "axios";
 import AddChatRoom from "@/components/AddChatRoom.vue";
 import ChatRoomDetail from "@/components/ChatRoomDetail.vue";
-import { chatApi } from "@/api/chatApi";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL;
 const authStore = useAuthStore();

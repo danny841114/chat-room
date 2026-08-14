@@ -39,11 +39,23 @@ export const chatApi = {
     return apiClient.delete(`/${roomId}/users/${userId}`);
   },
 
+  getMembersExceptMe() {
+    return apiClient.get(`/available-users`);
+  },
+
   getMembersExceptExisting(roomId) {
     return apiClient.get(`/${roomId}/available-users`);
   },
 
   addChatRoomMembers(roomId, userIds) {
-    return apiClient.get(`/${roomId}/users`, { userIds });
+    return apiClient.post(`/${roomId}/users`, { userIds });
+  },
+
+  addChatRoom(name, type, memberIds) {
+    return apiClient.post("", {
+      name,
+      type,
+      memberIds,
+    });
   },
 };

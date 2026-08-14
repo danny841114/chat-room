@@ -19,23 +19,14 @@
       <div class="input-group mb-3">
         <span class="input-group-text">人員</span>
 
-        <select
-          class="form-control"
-          v-model="selectedPrivateUserId"
-          v-if="roomType === 'PRIVATE'"
-        >
+        <select class="form-control" v-model="selectedPrivateUserId" v-if="roomType === 'PRIVATE'">
           <option disabled :value="null">請選擇聊天對象</option>
           <option v-for="u in users" :key="u.userId" :value="u.userId">
             {{ u.username }} ({{ u.account }})
           </option>
         </select>
 
-        <select
-          class="form-control"
-          v-model="selectedGroupUserIds"
-          v-if="roomType === 'GROUP'"
-          multiple
-        >
+        <select class="form-control" v-model="selectedGroupUserIds" v-if="roomType === 'GROUP'" multiple>
           <option v-for="u in users" :key="u.userId" :value="u.userId">
             {{ u.username }} ({{ u.account }})
           </option>
@@ -52,13 +43,11 @@
 
 <script setup>
 import { ref, onMounted, watch } from "vue";
-import axios from "axios";
+import { chatApi } from "@/api/chatApi";
 import Swal from "sweetalert2";
 
-const apiBase = import.meta.env.VITE_API_BASE_URL;
 const emit = defineEmits(["close", "created"]);
 const users = ref([]);
-
 const roomName = ref(null);
 const roomType = ref("PRIVATE");
 const selectedPrivateUserId = ref(null);
@@ -73,12 +62,7 @@ watch(
 
 const loadUsers = async () => {
   try {
-    const response = await axios.get(
-      `${apiBase}/api/chat-rooms/available-users`,
-      { withCredentials: true },
-    );
-
-    users.value = response.data;
+    users.value = await chatApi.getMembersExceptMe();
   } catch (e) {
     console.error("Error loading users", e);
   }
@@ -105,22 +89,12 @@ const createRoom = async () => {
       memberIds = selectedGroupUserIds.value;
     }
 
-    const response = await axios.post(
-      `${apiBase}/api/chat-rooms`,
-      {
-        name: roomName.value,
-        type: roomType.value,
-        memberIds: memberIds,
-      },
-      {
-        withCredentials: true,
-      },
-    );
+    const res = await chatApi.addChatRoom(roomName.value, roomType.value, memberIds)
 
     roomName.value = null;
     selectedGroupUserIds.value = [];
 
-    emit("created", response.data.roomId);
+    emit("created", res.roomId);
   } catch (e) {
     console.error("Error creating room", e);
   }

@@ -48,11 +48,9 @@
 
 <script setup>
 import { ref } from "vue";
-import axios from "axios";
-import Swal from "sweetalert2";
 import { chatApi } from "@/api/chatApi";
+import Swal from "sweetalert2";
 
-const apiBase = import.meta.env.VITE_API_BASE_URL;
 const emit = defineEmits(["close", "created"]);
 const props = defineProps({
   chatRoom: Object,
