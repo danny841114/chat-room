@@ -5,24 +5,12 @@
       <form @submit.prevent="handleLogin">
         <div class="input-group mb-3">
           <label class="input-group-text" for="account">帳號</label>
-          <input
-            type="text"
-            class="form-control"
-            id="account"
-            v-model="account"
-            required
-          />
+          <input type="text" class="form-control" id="account" v-model="account" required />
         </div>
 
         <div class="input-group mb-3">
           <label class="input-group-text" for="password">密碼</label>
-          <input
-            type="password"
-            class="form-control"
-            id="password"
-            v-model="password"
-            required
-          />
+          <input type="password" class="form-control" id="password" v-model="password" required />
         </div>
 
         <div class="text-center">
@@ -35,28 +23,16 @@
 
     <div class="text-center quick-login">
       <h3>快速登入</h3>
-      <button
-        class="btn btn-success quick-login-btn"
-        @click="quickLogin('user01', 'aaa123')"
-      >
+      <button class="btn btn-success quick-login-btn" @click="quickLogin('user01', 'aaa123')">
         user01
       </button>
-      <button
-        class="btn btn-success quick-login-btn"
-        @click="quickLogin('user02', 'bbb456')"
-      >
+      <button class="btn btn-success quick-login-btn" @click="quickLogin('user02', 'bbb456')">
         user02
       </button>
-      <button
-        class="btn btn-success quick-login-btn"
-        @click="quickLogin('user03', 'ccc789')"
-      >
+      <button class="btn btn-success quick-login-btn" @click="quickLogin('user03', 'ccc789')">
         user03
       </button>
-      <button
-        class="btn btn-success quick-login-btn"
-        @click="quickLogin('user04', 'ddd101')"
-      >
+      <button class="btn btn-success quick-login-btn" @click="quickLogin('user04', 'ddd101')">
         user04
       </button>
       <button class="btn btn-success" @click="quickLogin('user05', 'eee202')">
@@ -70,10 +46,9 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import axios from "axios";
+import { userApi } from "@/api/userApi";
 import Swal from "sweetalert2";
 
-const apiBase = import.meta.env.VITE_API_BASE_URL;
 const account = ref("");
 const password = ref("");
 const errorMsg = ref(null);
@@ -82,18 +57,8 @@ const authStore = useAuthStore();
 
 const handleLogin = async () => {
   try {
-    const response = await axios.post(
-      `${apiBase}/api/auth/login`,
-      {
-        account: account.value,
-        password: password.value,
-      },
-      {
-        withCredentials: true,
-      },
-    );
-
-    authStore.setLogin(response.data);
+    const res = await userApi.login(account.value, password.value)
+    authStore.setLogin(res);
 
     await Swal.fire({
       title: "登入成功",

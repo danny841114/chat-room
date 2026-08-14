@@ -1,7 +1,5 @@
 import { defineStore } from "pinia";
-import axios from "axios";
-
-const apiBase = import.meta.env.VITE_API_BASE_URL;
+import { userApi } from "@/api/userApi";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -23,9 +21,7 @@ export const useAuthStore = defineStore("auth", {
       this.userId = null;
 
       try {
-        const response = await axios.post(`${apiBase}/api/auth/logout`, null, {
-          withCredentials: true,
-        });
+        await userApi.logout();
       } catch (e) {
         console.error("Error log out", e);
       }
@@ -33,11 +29,8 @@ export const useAuthStore = defineStore("auth", {
 
     async fetchMe() {
       try {
-        const response = await axios.get(`${apiBase}/api/auth/fetchMe`, {
-          withCredentials: true,
-        });
-
-        this.setLogin(response.data);
+        const res = await userApi.fetchMe();
+        this.setLogin(res);
       } catch (e) {
         console.error("Error fetch me", e);
       }
