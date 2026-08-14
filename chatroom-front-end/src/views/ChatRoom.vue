@@ -81,6 +81,7 @@ import SockJS from "sockjs-client";
 import axios from "axios";
 import AddChatRoom from "@/components/AddChatRoom.vue";
 import ChatRoomDetail from "@/components/ChatRoomDetail.vue";
+import { chatApi } from "@/api/chatApi";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL;
 const authStore = useAuthStore();
@@ -106,11 +107,7 @@ const isChatRoomIdEmpty = computed(() => {
 
 const loadChatRooms = async () => {
   try {
-    const response = await axios.get(`${apiBase}/api/chat-rooms`, {
-      withCredentials: true,
-    });
-
-    chatRooms.value = response.data;
+    chatRooms.value = await chatApi.getChatRooms();
   } catch (e) {
     console.error("Error loading chat rooms", e);
   }
@@ -120,24 +117,10 @@ const loadMessages = async (roomId) => {
   openedMenuId.value = null;
 
   try {
-    const response = await axios.get(`${apiBase}/api/chat-rooms/${roomId}`, {
-      withCredentials: true,
-    });
-
-    currentChatRoom.value = response.data;
+    currentChatRoom.value = await chatApi.getChatRoomById(roomId);
+    messages.value = await chatApi.getMessagesByRoomId(roomId);
   } catch (e) {
-    console.error("Error loading chat room description", e);
-  }
-
-  try {
-    const response2 = await axios.get(
-      `${apiBase}/api/chat-rooms/${roomId}/messages`,
-      { withCredentials: true }
-    );
-
-    messages.value = response2.data;
-  } catch (e) {
-    console.error("Error loading chat room messages", e);
+    console.error("Error loading chat room info", e);
   }
 
   // update unread message count 0
@@ -160,10 +143,7 @@ const toggleMenu = (messageId) => {
 
 const recallMessage = async (msgId) => {
   try {
-    await axios.delete(
-      `${apiBase}/api/chat-rooms/${currentChatRoom.value.roomId}/messages/${msgId}`,
-      { withCredentials: true }
-    );
+    await chatApi.removeMessage(currentChatRoom.value.roomId, msgId)
 
     const msg = messages.value.find((m) => m.messageId === msgId);
     if (msg) msg.deletedAt = new Date();
@@ -176,11 +156,7 @@ const recallMessage = async (msgId) => {
 
 const restoreDeletedMessage = async (msgId) => {
   try {
-    await axios.put(
-      `${apiBase}/api/chat-rooms/${currentChatRoom.value.roomId}/messages/${msgId}`,
-      null,
-      { withCredentials: true }
-    );
+    chatApi.restoreMessage(currentChatRoom.value.roomId, msgId)
 
     const msg = messages.value.find((m) => m.messageId === msgId);
     if (msg) msg.deletedAt = null;

@@ -5,28 +5,18 @@
       <h5 class="text-center">聊天室成員</h5>
 
       <ul class="list-group">
-        <li
-          class="list-group-item d-flex justify-content-between align-items-center"
-          v-for="u in props.chatRoom.users"
-          :key="u.userId"
-        >
+        <li class="list-group-item d-flex justify-content-between align-items-center" v-for="u in props.chatRoom.users"
+          :key="u.userId">
           <span>{{ u.username }} ({{ u.account }})</span>
-          <button
-            class="btn btn-danger"
-            v-if="chatRoom.type === 'GROUP'"
-            @click="deleteMember(u.userId, u.username, u.account)"
-          >
+          <button class="btn btn-danger" v-if="chatRoom.type === 'GROUP'"
+            @click="deleteMember(u.userId, u.username, u.account)">
             移除
           </button>
         </li>
       </ul>
 
       <div class="mt-3 text-center">
-        <button
-          class="btn btn-primary"
-          v-if="chatRoom.type === 'GROUP'"
-          @click="openAddMemberMode"
-        >
+        <button class="btn btn-primary" v-if="chatRoom.type === 'GROUP'" @click="openAddMemberMode">
           新增
         </button>
         &nbsp;
@@ -60,6 +50,7 @@
 import { ref } from "vue";
 import axios from "axios";
 import Swal from "sweetalert2";
+import { chatApi } from "@/api/chatApi";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL;
 const emit = defineEmits(["close", "created"]);
@@ -83,18 +74,11 @@ const deleteMember = async (userId, username, account) => {
   if (!ask.isConfirmed) return;
 
   try {
-    const response = await axios.delete(
-      `${apiBase}/api/chat-rooms/${props.chatRoom.roomId}/users/${userId}`,
-      {
-        withCredentials: true,
-      },
-    );
+    await chatApi.removeChatRoomMember(props.chatRoom.roomId, userId)
 
-    if (response.status === 204) {
-      const index = props.chatRoom.users.findIndex((u) => u.userId === userId);
+    const index = props.chatRoom.users.findIndex((u) => u.userId === userId);
 
-      if (index !== -1) props.chatRoom.users.splice(index, 1);
-    }
+    if (index !== -1) props.chatRoom.users.splice(index, 1);
   } catch (e) {
     console.error("Error delete member from chat room", e);
   }
@@ -102,12 +86,7 @@ const deleteMember = async (userId, username, account) => {
 
 const getUsersExceptExistingMembers = async () => {
   try {
-    const response = await axios.get(
-      `${apiBase}/api/chat-rooms/${props.chatRoom.roomId}/available-users`,
-      { withCredentials: true },
-    );
-
-    usersForAdding.value = response.data;
+    usersForAdding.value = await chatApi.getMembersExceptExisting(props.chatRoom.roomId);
   } catch (e) {
     console.error("Error loading users", e);
   }
@@ -115,11 +94,7 @@ const getUsersExceptExistingMembers = async () => {
 
 const addChatRoomMember = async () => {
   try {
-    const response = await axios.post(
-      `${apiBase}/api/chat-rooms/${props.chatRoom.roomId}/users`,
-      { userIds: selectedUserIds.value },
-      { withCredentials: true },
-    );
+    await chatApi.addChatRoomMembers(props.chatRoom.roomId, selectedUserIds.value)
 
     selectedUserIds.value = [];
     mode.value = "detail";
