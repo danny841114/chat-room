@@ -17,8 +17,7 @@ public class JwtUtil {
         Date issuedTime = new Date();
         Date expirationTime = new Date(issuedTime.getTime() + EXPIRATION_TIME);
 
-        return Jwts
-                .builder()
+        return Jwts.builder()
                 .setSubject(account)
                 .setIssuedAt(issuedTime)
                 .setExpiration(expirationTime)

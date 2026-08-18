@@ -39,6 +39,10 @@
         user05
       </button>
     </div>
+
+    <div>
+      <a href="http://localhost:8080/oauth2/authorization/google">使用 Google 帳號登入</a>
+    </div>
   </div>
 </template>
 
