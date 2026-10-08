@@ -1,58 +1,46 @@
-import axios from "axios";
+import apiClient from "./axios";
 
-const apiClient = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api/chat-rooms`,
-  timeout: 10000,
-  withCredentials: true,
-});
-
-apiClient.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    console.error("API Error:", error);
-    return Promise.reject(error);
-  }
-);
+const API_PREFIX = "/api/chat-rooms";
 
 export const chatApi = {
   getChatRooms() {
-    return apiClient.get("");
+    return apiClient.get(API_PREFIX);
   },
 
   getChatRoomById(id) {
-    return apiClient.get(`/${id}`);
+    return apiClient.get(`${API_PREFIX}/${id}`);
   },
 
   getMessagesByRoomId(roomId) {
-    return apiClient.get(`/${roomId}/messages`);
+    return apiClient.get(`${API_PREFIX}/${roomId}/messages`);
   },
 
   removeMessage(roomId, msgId) {
-    return apiClient.delete(`/${roomId}/messages/${msgId}`);
+    return apiClient.delete(`${API_PREFIX}/${roomId}/messages/${msgId}`);
   },
 
   restoreMessage(roomId, msgId) {
-    return apiClient.put(`/${roomId}/messages/${msgId}`);
+    return apiClient.put(`${API_PREFIX}/${roomId}/messages/${msgId}`);
   },
 
   removeChatRoomMember(roomId, userId) {
-    return apiClient.delete(`/${roomId}/users/${userId}`);
+    return apiClient.delete(`${API_PREFIX}/${roomId}/users/${userId}`);
   },
 
   getMembersExceptMe() {
-    return apiClient.get(`/available-users`);
+    return apiClient.get(`${API_PREFIX}/available-users`);
   },
 
   getMembersExceptExisting(roomId) {
-    return apiClient.get(`/${roomId}/available-users`);
+    return apiClient.get(`${API_PREFIX}/${roomId}/available-users`);
   },
 
   addChatRoomMembers(roomId, userIds) {
-    return apiClient.post(`/${roomId}/users`, { userIds });
+    return apiClient.post(`${API_PREFIX}/${roomId}/users`, { userIds });
   },
 
   addChatRoom(name, type, memberIds) {
-    return apiClient.post("", {
+    return apiClient.post(API_PREFIX, {
       name,
       type,
       memberIds,

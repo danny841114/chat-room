@@ -1,32 +1,20 @@
-import axios from "axios";
+import apiClient from "./axios";
 
-const apiClient = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api/auth`,
-  timeout: 10000,
-  withCredentials: true,
-});
-
-apiClient.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    console.error("API Error:", error);
-    return Promise.reject(error);
-  }
-);
+const API_PREFIX = "/api/auth";
 
 export const userApi = {
   login(account, password) {
-    return apiClient.post("/login", {
+    return apiClient.post(`${API_PREFIX}/login`, {
       account,
       password,
     });
   },
 
   logout() {
-    return apiClient.post("/logout");
+    return apiClient.post(`${API_PREFIX}/logout`);
   },
 
   fetchMe() {
-    return apiClient.get("/fetchMe");
+    return apiClient.get(`${API_PREFIX}/fetchMe`);
   },
 };
